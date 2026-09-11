@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Add Content</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;min-height:100%;background:#0a0a14;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#f0f0f0;
+  display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;}
+body::before{content:'';position:fixed;inset:0;z-index:-1;
+  background:radial-gradient(ellipse at 30% 30%,#1a0f30 0%,#0a0a14 70%);}
+.page-title{font-size:clamp(22px,4vw,38px);font-weight:900;letter-spacing:3px;
+  background:linear-gradient(135deg,#a78bfa,#f0abfc);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:6px;text-align:center;margin-top:10px;}
+.page-sub{font-size:13px;color:#444;letter-spacing:2px;text-align:center;margin-bottom:20px;}
+.back-link{font-size:13px;color:#444;text-decoration:none;
+  margin-bottom:16px;align-self:flex-start;transition:color .15s;}
+.back-link:hover{color:#a78bfa;}
+
+/* Tabs */
+.tabs{display:flex;gap:0;width:100%;max-width:520px;
+  background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.08);
+  border-radius:14px;overflow:hidden;margin-bottom:18px;}
+.tab{flex:1;padding:12px 8px;text-align:center;font-size:clamp(13px,2vw,16px);
+  font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:1px;
+  border:none;background:none;color:#555;-webkit-tap-highlight-color:transparent;}
+.tab.active{background:linear-gradient(135deg,#6d28d9,#a78bfa);color:#fff;}
+.tab:first-child{border-radius:12px 0 0 12px;}
+.tab:last-child{border-radius:0 12px 12px 0;}
+
+.card{width:100%;max-width:520px;background:rgba(255,255,255,0.04);
+  border:1.5px solid rgba(255,255,255,0.08);border-radius:20px;padding:26px 22px;
+  display:flex;flex-direction:column;gap:16px;margin-bottom:16px;}
+.panel{display:none;flex-direction:column;align-items:center;width:100%;}
+.panel.active{display:flex;}
+
+/* Drop zone */
+#dropZone{border:2.5px dashed rgba(167,139,250,0.35);border-radius:14px;
+  padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;
+  background:rgba(167,139,250,0.04);-webkit-tap-highlight-color:transparent;}
+#dropZone:hover,#dropZone.over{border-color:#a78bfa;background:rgba(167,139,250,0.1);}
+#dropZone.has-file{border-color:#4ade80;background:rgba(74,222,128,0.06);}
+.dz-icon{font-size:38px;margin-bottom:8px;}
+.dz-text{font-size:14px;color:#666;line-height:1.6;}
+.dz-file{font-size:15px;font-weight:700;color:#4ade80;}
+
+/* URL preview */
+#urlPreview{display:none;background:rgba(6,182,212,0.06);border:1.5px solid rgba(6,182,212,0.25);
+  border-radius:12px;padding:12px 14px;font-size:13px;color:#06b6d4;word-break:break-all;
+  line-height:1.5;}
+
+label{font-size:12px;color:#555;letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:4px;display:block;}
+input[type=text],input[type=password],input[type=url],select{width:100%;
+  background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.1);
+  border-radius:10px;padding:11px 14px;font-size:15px;color:#f0f0f0;outline:none;
+  transition:border-color .15s;font-family:inherit;}
+input:focus,select:focus{border-color:#a78bfa;}
+input[type=file]{display:none;}
+.emoji-row{display:flex;gap:8px;flex-wrap:wrap;}
+.emoji-btn{width:40px;height:40px;border-radius:10px;
+  border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);
+  font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.emoji-btn:hover,.emoji-btn.selected{border-color:#a78bfa;
+  background:rgba(167,139,250,0.2);transform:scale(1.12);}
+.submit-btn{width:100%;padding:14px;font-size:clamp(16px,2.5vw,20px);font-weight:700;
+  border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,#6d28d9,#a78bfa);color:#fff;letter-spacing:1px;
+  transition:filter .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
+.submit-btn:hover{filter:brightness(1.15);}
+.submit-btn:active{transform:scale(.97);}
+.submit-btn:disabled{opacity:0.4;cursor:not-allowed;filter:none;}
+#status{width:100%;max-width:520px;border-radius:14px;padding:16px 20px;
+  font-size:14px;text-align:center;line-height:1.6;display:none;}
+#status.info{background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;}
+#status.ok{background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);color:#4ade80;}
+#status.err{background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#f87171;}
+#progressWrap{display:none;width:100%;max-width:520px;height:6px;
+  background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+#progressBar{height:100%;width:0%;background:linear-gradient(90deg,#a78bfa,#f0abfc);
+  border-radius:3px;transition:width .3s;}
+#successScreen{display:none;flex-direction:column;align-items:center;
+  gap:16px;text-align:center;width:100%;max-width:520px;}
+.success-icon{font-size:72px;}
+.success-title{font-size:clamp(26px,5vw,42px);font-weight:900;
+  background:linear-gradient(135deg,#4ade80,#86efac);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.btn-small{font-size:14px;font-weight:700;border:none;border-radius:10px;
+  padding:10px 22px;cursor:pointer;transition:filter .15s;}
+.btn-green{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;}
+.btn-gray{background:rgba(255,255,255,0.1);color:#ccc;border:1px solid rgba(255,255,255,0.15);}
+.btn-small:hover{filter:brightness(1.15);}
+</style>
+</head>
+<body>
+
+<a class="back-link" href="index.html">&#8592; Back to Game Room</a>
+<div class="page-title">&#127918; ADD CONTENT</div>
+<div class="page-sub">Published directly to the Game Room</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('game')" id="tabGame">🎮 Upload game</button>
+  <button class="tab"        onclick="switchTab('link')" id="tabLink">🔗 Add link</button>
+</div>
+
+<!-- PANEL: GAME UPLOAD -->
+<div class="panel active" id="panelGame">
+<div class="card">
+  <div>
+    <label>YOUR GAME (.HTML FILE)</label>
+    <div id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="dz-icon">&#128193;</div>
+      <div class="dz-text" id="dzText">
+        Tap here to choose your HTML file<br>
+        <span style="font-size:12px;color:#444;">or drag and drop the file here</span>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".html,.htm">
+  </div>
+  <div>
+    <label>GAME NAME</label>
+    <input type="text" id="gameName" placeholder="E.g. My Space Adventure" maxlength="40">
+  </div>
+  <div>
+    <label>CHOOSE EMOJI</label>
+    <div class="emoji-row" id="emojiRowGame"></div>
+  </div>
+  <div>
+    <label>SHORT DESCRIPTION (optional)</label>
+    <input type="text" id="gameDesc" placeholder="E.g. Steer the rocket with the arrow keys" maxlength="60">
+  </div>
+  <div>
+    <label>ADD TO CATEGORY</label>
+    <select id="gameCategory">
+      <optgroup label="📱 Touchscreen">
+        <option value="touch_sallskap">🎲 Board Games (Touch)</option>
+        <option value="touch_boll">🏓 Ball &amp; Racket Sports (Touch)</option>
+        <option value="touch_hjarna">🧠 Brain Training (Touch)</option>
+        <option value="touch_strategi">♟️ Strategy Games (Touch)</option>
+        <option value="touch_webb">🌐 Web &amp; Activities (Touch)</option>
+      </optgroup>
+      <optgroup label="🕹️ MakeyMakey">
+        <option value="makey_pilar">⬆️ Arrow Keys (Makey)</option>
+        <option value="makey_mellanslag">⎵ Space &amp; Enter (Makey)</option>
+        <option value="makey_action">🎮 Combination (Makey)</option>
+        <option value="makey_sonar">📡 Sonar (Makey)</option>
+        <option value="makey_webb">🌐 Web &amp; Activities (Makey)</option>
+      </optgroup>
+    </select>
+  </div>
+  <div>
+    <label>PASSWORD</label>
+    <input type="password" id="pwdGame" placeholder="Enter the password" maxlength="30">
+  </div>
+  <button class="submit-btn" id="submitGame" type="button" onclick="uploadGame()" disabled>
+    Upload game
+  </button>
+</div>
+</div>
+
+<!-- PANEL: LINK -->
+<div class="panel" id="panelLink">
+<div class="card">
+  <div>
+    <label>WEB ADDRESS (URL)</label>
+    <input type="url" id="linkUrl" placeholder="https://www.jigsawplanet.com" oninput="checkLinkReady();previewUrl()">
+    <div id="urlPreview" style="margin-top:8px;"></div>
+  </div>
+  <div>
+    <label>LINK NAME</label>
+    <input type="text" id="linkName" placeholder="E.g. Jigsawplanet" maxlength="40" oninput="checkLinkReady()">
+  </div>
+  <div>
+    <label>CHOOSE EMOJI</label>
+    <div class="emoji-row" id="emojiRowLink"></div>
+  </div>
+  <div>
+    <label>SHORT DESCRIPTION (optional)</label>
+    <input type="text" id="linkDesc" placeholder="E.g. Create and solve puzzles online" maxlength="60">
+  </div>
+  <div>
+    <label>ADD TO CATEGORY</label>
+    <select id="linkCategory">
+      <optgroup label="📱 Touchscreen">
+        <option value="touch_webb" selected>🌐 Web &amp; Activities (Touch)</option>
+        <option value="touch_sallskap">🎲 Board Games (Touch)</option>
+        <option value="touch_hjarna">🧠 Brain Training (Touch)</option>
+      </optgroup>
+      <optgroup label="🕹️ MakeyMakey">
+        <option value="makey_webb">🌐 Web &amp; Activities (Makey)</option>
+        <option value="makey_sonar">📡 Sonar (Makey)</option>
+      </optgroup>
+    </select>
+  </div>
+  <div>
+    <label>PASSWORD</label>
+    <input type="password" id="pwdLink" placeholder="Enter the password" maxlength="30" oninput="checkLinkReady()">
+  </div>
+  <button class="submit-btn" id="submitLink" type="button" onclick="uploadLink()" disabled>
+    Add link
+  </button>
+</div>
+</div>
+
+<div id="progressWrap"><div id="progressBar"></div></div>
+<div id="status"></div>
+
+<div id="successScreen">
+  <div class="success-icon">&#127881;</div>
+  <div class="success-title" id="successTitle">Done!</div>
+  <div style="font-size:15px;color:#888;" id="successMsg"></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
+    <button class="btn-small btn-green" onclick="location.href='index.html'">To Game Room</button>
+    <button class="btn-small btn-gray"  onclick="resetForm()">Add more</button>
+  </div>
+</div>
+
+<script>
+const REPO   = 'sukrutaraj/Game_room';
+const BRANCH = 'main';
+const OBF    = [33,29,30,109,82,5,1,0,19,27,113,4,5,71,14,57,88,86,3,117,98,48,45,58,1,104,97,1,3,65,90,2,105,84,5,114,69,0,91,104];
+const PWD_HASH = '499';
+
+function decodeToken(pwd){
+  return OBF.map(function(b,i){ return String.fromCharCode(b ^ pwd.charCodeAt(i % pwd.length)); }).join('');
+}
+function checkPwd(pwd){
+  var h = String(pwd.split('').reduce(function(a,c){ return a + c.charCodeAt(0); }, 0));
+  return h === PWD_HASH;
+}
+
+var EMOJIS = ['🎮','🕹️','🎲','🃏','🀄','♟️','🎯','🏆','🎪','🎭','⚽','🏀','🎾','🏓','🏸','🥊','🏊','🏎️','🚴','🛹','🎵','🎶','🎸','🎹','🎺','🥁','🎷','🎙️','📡','🔊','🦁','🐉','🦊','🐸','🦋','🌈','🌊','🌋','🌟','⭐','🍕','🍔','🍎','🍓','🍦','🧁','🍩','🥐','🍜','🧃','🚀','🛸','🤖','👾','💎','🔮','⚡','🔥','💥','🌀','🎨','✏️','📚','🔑','🧪','🔭','🧲','🎁','🛒','🚗','😎','🤩','👻','🎉','❤️','🌸','🌻','🍀','🦄','🧸'];
+
+var selectedEmojiGame = '🎮';
+var selectedEmojiLink = '🌐';
+var selectedFile = null;
+var fileContent  = '';
+var currentTab   = 'game';
+
+function buildEmojiPicker(rowId, getSelected, setSelected){
+  var row = document.getElementById(rowId);
+  row.innerHTML = '';
+  EMOJIS.forEach(function(e){
+    var btn = document.createElement('button');
+    btn.className = 'emoji-btn' + (e === getSelected() ? ' selected' : '');
+    btn.textContent = e;
+    btn.type = 'button';
+    btn.onclick = function(){
+      setSelected(e);
+      row.querySelectorAll('.emoji-btn').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    };
+    row.appendChild(btn);
+  });
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.getElementById('panelGame').classList.toggle('active', tab==='game');
+  document.getElementById('panelLink').classList.toggle('active', tab==='link');
+  document.getElementById('tabGame').classList.toggle('active', tab==='game');
+  document.getElementById('tabLink').classList.toggle('active', tab==='link');
+  document.getElementById('status').style.display = 'none';
+}
+
+/* ── File upload ── */
+document.getElementById('fileInput').addEventListener('change', function(e){
+  handleFile(e.target.files[0]);
+});
+var dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',  function(e){ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e){
+  e.preventDefault(); dz.classList.remove('over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file){
+  if(!file) return;
+  if(!file.name.match(/\.html?$/i)){ showStatus('err','The file must be an .html file!'); return; }
+  if(file.size > 5*1024*1024){ showStatus('err','The file is too large (max 5MB)'); return; }
+  selectedFile = file;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    fileContent = ev.target.result;
+    dz.classList.add('has-file');
+    document.getElementById('dzText').innerHTML =
+      '<div class="dz-file">Selected: '+file.name+'</div>'+
+      '<div style="font-size:12px;color:#555;margin-top:4px;">'+Math.round(file.size/1024)+'KB - Ready!</div>';
+    var nameEl = document.getElementById('gameName');
+    if(!nameEl.value) nameEl.value = file.name.replace(/\.html?$/i,'').replace(/[-_]/g,' ');
+    checkGameReady();
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+document.getElementById('gameName').addEventListener('input', checkGameReady);
+document.getElementById('pwdGame').addEventListener('input',  checkGameReady);
+
+function checkGameReady(){
+  var ok = selectedFile !== null &&
+           document.getElementById('gameName').value.trim().length > 1 &&
+           document.getElementById('pwdGame').value.length > 2;
+  document.getElementById('submitGame').disabled = !ok;
+}
+
+/* ── Link ── */
+function previewUrl(){
+  var url = document.getElementById('linkUrl').value.trim();
+  var prev = document.getElementById('urlPreview');
+  if(url.startsWith('http')){
+    prev.style.display = 'block';
+    prev.textContent = '🔗 ' + url;
+  } else {
+    prev.style.display = 'none';
+  }
+}
+
+function checkLinkReady(){
+  var url  = document.getElementById('linkUrl').value.trim();
+  var name = document.getElementById('linkName').value.trim();
+  var pwd  = document.getElementById('pwdLink').value;
+  var ok = url.startsWith('http') && name.length > 1 && pwd.length > 2;
+  document.getElementById('submitLink').disabled = !ok;
+}
+
+/* ── Parse category ── */
+function parseCat(catVal){
+  var parts  = catVal.split('_');
+  var hub    = parts[0];
+  var cat    = parts.slice(1).join('_') || 'webb';
+  var folder = hub==='touch' ? 'deltagarspel_touch' : 'deltagarspel_makey';
+  return {hub:hub, cat:cat, folder:folder};
+}
+
+/* ── GitHub PUT ── */
+function githubPut(path, content_b64, message, token){
+  return fetch('https://api.github.com/repos/'+REPO+'/contents/'+path,{
+    method:'PUT',
+    headers:{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+    body:JSON.stringify({message:message, content:content_b64, branch:BRANCH})
+  }).then(function(res){
+    if(!res.ok) return res.json().then(function(e){ throw new Error(e.message||('Status '+res.status)); });
+    return res.json();
+  });
+}
+
+function showProgress(pct){ document.getElementById('progressBar').style.width = pct+'%'; }
+function showProgressWrap(show){ document.getElementById('progressWrap').style.display = show?'block':'none'; }
+
+/* ── Upload game ── */
+function uploadGame(){
+  var name = document.getElementById('gameName').value.trim();
+  var desc = document.getElementById('gameDesc').value.trim() || name;
+  var pwd  = document.getElementById('pwdGame').value;
+  var pc   = parseCat(document.getElementById('gameCategory').value);
+
+  if(!checkPwd(pwd)){ showStatus('err','Wrong password!'); document.getElementById('pwdGame').value=''; return; }
+  var token    = decodeToken(pwd);
+  var safeName = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
+  var ts       = Date.now();
+  var filename = safeName+'_'+ts+'.html';
+
+  document.getElementById('submitGame').disabled = true;
+  showProgressWrap(true); showProgress(20);
+  showStatus('info','Uploading game...');
+
+  var b64 = btoa(unescape(encodeURIComponent(fileContent)));
+  showProgress(45);
+
+  githubPut(pc.folder+'/'+filename, b64, 'New game: '+name, token)
+  .then(function(){
+    showProgress(70);
+    var meta = {name:name,emoji:selectedEmojiGame,desc:desc,file:filename,cat:pc.cat,uploaded:new Date().toISOString()};
+    var mb64 = btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+    return githubPut(pc.folder+'/meta_'+safeName+'_'+ts+'.json', mb64, 'Meta: '+name, token);
+  })
+  .then(function(){
+    showProgress(100);
+    setTimeout(function(){ showProgressWrap(false); },500);
+    showSuccess('🎮',name, (pc.hub==='touch'?'Touchscreen':'MakeyMakey')+' – '+pc.cat);
+  })
+  .catch(function(e){
+    showProgressWrap(false); showProgress(0);
+    document.getElementById('submitGame').disabled = false;
+    showStatus('err','Upload failed: '+e.message);
+  });
+}
+
+/* ── Upload link ── */
+function uploadLink(){
+  var url  = document.getElementById('linkUrl').value.trim();
+  var name = document.getElementById('linkName').value.trim();
+  var desc = document.getElementById('linkDesc').value.trim() || name;
+  var pwd  = document.getElementById('pwdLink').value;
+  var pc   = parseCat(document.getElementById('linkCategory').value);
+
+  if(!checkPwd(pwd)){ showStatus('err','Wrong password!'); document.getElementById('pwdLink').value=''; return; }
+  var token    = decodeToken(pwd);
+  var safeName = name.toLowerCase().replace(/[åä]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40);
+  var ts       = Date.now();
+
+  document.getElementById('submitLink').disabled = true;
+  showProgressWrap(true); showProgress(30);
+  showStatus('info','Adding link...');
+
+  // For links: store a meta file only (no HTML file), with url field
+  var meta = {name:name, emoji:selectedEmojiLink, desc:desc, url:url, cat:pc.cat, type:'link', uploaded:new Date().toISOString()};
+  var mb64 = btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+
+  githubPut(pc.folder+'/meta_'+safeName+'_'+ts+'.json', mb64, 'New link: '+name, token)
+  .then(function(){
+    showProgress(100);
+    setTimeout(function(){ showProgressWrap(false); },500);
+    showSuccess('🔗',name, (pc.hub==='touch'?'Touchscreen':'MakeyMakey')+' – '+pc.cat);
+  })
+  .catch(function(e){
+    showProgressWrap(false); showProgress(0);
+    document.getElementById('submitLink').disabled = false;
+    showStatus('err','Failed: '+e.message);
+  });
+}
+
+function showSuccess(icon, name, where){
+  document.querySelectorAll('.panel,.card').forEach(function(el){ el.style.display='none'; });
+  document.querySelector('.tabs').style.display = 'none';
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('successTitle').textContent = 'Done! '+icon;
+  document.getElementById('successMsg').textContent = '"'+name+'" was added to '+where+'!';
+  document.getElementById('successScreen').style.display = 'flex';
+}
+
+function showStatus(type, msg){
+  var el = document.getElementById('status');
+  el.className = type; el.textContent = msg; el.style.display = 'block';
+}
+
+function resetForm(){
+  selectedFile = null; fileContent = '';
+  document.querySelectorAll('.panel').forEach(function(el){ el.style.display=''; });
+  document.querySelector('.tabs').style.display = 'flex';
+  document.getElementById('successScreen').style.display = 'none';
+  document.getElementById('fileInput').value  = '';
+  document.getElementById('gameName').value   = '';
+  document.getElementById('gameDesc').value   = '';
+  document.getElementById('pwdGame').value    = '';
+  document.getElementById('linkUrl').value    = '';
+  document.getElementById('linkName').value   = '';
+  document.getElementById('linkDesc').value   = '';
+  document.getElementById('pwdLink').value    = '';
+  document.getElementById('urlPreview').style.display = 'none';
+  dz.classList.remove('has-file');
+  document.getElementById('dzText').innerHTML =
+    'Tap here to choose your HTML file<br>'+
+    '<span style="font-size:12px;color:#444;">or drag and drop the file here</span>';
+  document.getElementById('submitGame').disabled = true;
+  document.getElementById('submitLink').disabled = true;
+  document.getElementById('status').style.display = 'none';
+  switchTab('game');
+}
+
+// Build emoji pickers
+buildEmojiPicker('emojiRowGame', function(){ return selectedEmojiGame; }, function(e){ selectedEmojiGame=e; });
+buildEmojiPicker('emojiRowLink', function(){ return selectedEmojiLink; }, function(e){ selectedEmojiLink=e; });
+
+// Pre-select category from URL param
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var cat = params.get('cat');
+  var hub = params.get('hub') || 'touch';
+  if(cat){
+    var val = hub+'_'+cat;
+    var gSel = document.getElementById('gameCategory');
+    var lSel = document.getElementById('linkCategory');
+    for(var i=0;i<gSel.options.length;i++) if(gSel.options[i].value===val){ gSel.selectedIndex=i; break; }
+    for(var i=0;i<lSel.options.length;i++) if(lSel.options[i].value===val){ lSel.selectedIndex=i; break; }
+  }
+  // If coming from link tab
+  if(params.get('tab')==='link') switchTab('link');
+})();
+</script>
+</body>
+</html>
