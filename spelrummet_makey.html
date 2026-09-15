@@ -66,11 +66,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-sy
   padding:14px;border-radius:24px;
   background:rgba(0,0,0,0.5);backdrop-filter:blur(10px);
   touch-action:none;user-select:none;-webkit-user-select:none;
-  cursor:grab;
   box-shadow:0 4px 20px rgba(0,0,0,0.5);
   border:1px solid rgba(34,197,94,0.2);
 }
-#touchControls:active{cursor:grabbing;}
 .touch-row{display:flex;gap:10px;}
 .touch-btn{
   width:82px;height:82px;border:none;border-radius:22px;
@@ -82,6 +80,13 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-sy
   -webkit-tap-highlight-color:transparent;
 }
 .touch-btn:active{transform:scale(0.94);background:rgba(34,197,94,0.3);}
+#touchDragHandle{
+  width:100%;padding:9px 14px;border-radius:16px;
+  background:rgba(255,255,255,0.08);color:#86efac;
+  font-size:13px;letter-spacing:1px;text-align:center;
+  cursor:grab;touch-action:none;-webkit-tap-highlight-color:transparent;
+}
+#touchDragHandle:active{cursor:grabbing;background:rgba(255,255,255,0.14);}
 .space-btn{width:174px;font-size:18px;}
 </style>
 </head>
@@ -526,53 +531,64 @@ function fireKey(key){
   }catch(e){}
 }
 
-document.querySelectorAll('.touch-btn').forEach(function(btn){
-  btn.addEventListener('pointerdown', function(e){
-    e.preventDefault(); e.stopPropagation();
-    fireKey(btn.dataset.key);
-    btn.style.transform='scale(0.94)';
-    setTimeout(function(){btn.style.transform='';},120);
-  },{passive:false});
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.touch-btn').forEach(function(btn){
+    btn.addEventListener('pointerdown', function(e){
+      e.preventDefault(); e.stopPropagation();
+      fireKey(btn.dataset.key);
+      btn.style.transform='scale(0.94)';
+      setTimeout(function(){btn.style.transform='';},120);
+    },{passive:false});
+  });
 });
 
-/* Drag — whole panel is draggable */
-(function(){
+/* Drag — grab the dedicated handle bar to move the whole panel.
+   Deferred until DOMContentLoaded because this script runs before
+   the touch-controls HTML (further down the page) has been parsed. */
+document.addEventListener('DOMContentLoaded', function(){
   var tc = document.getElementById('touchControls');
+  var handle = document.getElementById('touchDragHandle');
+  if(!tc || !handle) return;
   var dragging=false, startX=0, startY=0, startL=0, startT=0;
-  var moved=false;
 
-  tc.addEventListener('pointerdown',function(e){
-    // Don't start drag if pressing a game button
-    if(e.target.classList.contains('touch-btn')) return;
-    e.preventDefault();
-    dragging=true; moved=false;
-    tc.setPointerCapture(e.pointerId);
+  handle.addEventListener('pointerdown',function(e){
+    e.preventDefault(); e.stopPropagation();
+    dragging=true;
+    handle.setPointerCapture(e.pointerId);
     var r=tc.getBoundingClientRect();
     startL=r.left; startT=r.top;
     startX=e.clientX; startY=e.clientY;
-    tc.style.cursor='grabbing';
+    handle.style.cursor='grabbing';
   },{passive:false});
 
-  tc.addEventListener('pointermove',function(e){
+  window.addEventListener('pointermove',function(e){
     if(!dragging) return;
     e.preventDefault();
     var dx=e.clientX-startX, dy=e.clientY-startY;
-    if(Math.abs(dx)>5||Math.abs(dy)>5) moved=true;
     var nl=Math.max(0,Math.min(window.innerWidth-tc.offsetWidth, startL+dx));
     var nt=Math.max(0,Math.min(window.innerHeight-tc.offsetHeight, startT+dy));
     tc.style.left=nl+'px'; tc.style.top=nt+'px';
   },{passive:false});
 
-  function stop(){ dragging=false; tc.style.cursor='grab'; }
-  tc.addEventListener('pointerup',stop);
-  tc.addEventListener('pointercancel',stop);
-})();
+  function stop(){ dragging=false; handle.style.cursor='grab'; }
+  window.addEventListener('pointerup',stop);
+  window.addEventListener('pointercancel',stop);
+
+  /* Keep controls above the game iframe, even in fullscreen */
+  tc.style.zIndex='999999';
+  document.getElementById('touchToggle').style.zIndex='999999';
+
+  /* Prevent browser pinch/scroll gestures from hijacking the panel */
+  tc.addEventListener('gesturestart',function(e){ e.preventDefault(); });
+  tc.addEventListener('touchstart',function(e){ e.stopPropagation(); },{passive:false});
+});
 
 </script>
 
 <button id="touchToggle" onclick="toggleTouch()">🎮 Touch</button>
 
 <div id="touchControls">
+  <div id="touchDragHandle">✥ Drag</div>
   <div class="touch-row">
     <button class="touch-btn" data-key="ArrowUp">↑</button>
   </div>
