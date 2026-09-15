@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mini Golf</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#1a3a1a;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.screen{
+  position:fixed;inset:0;z-index:30;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;background:rgba(8,20,8,0.95);
+}
+.screen.hidden{display:none;}
+.title{
+  font-size:clamp(42px,8vw,80px);font-weight:900;letter-spacing:4px;
+  background:linear-gradient(135deg,#4ade80,#86efac,#22c55e);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hole-scroll{
+  display:flex;flex-wrap:wrap;justify-content:center;
+  gap:8px;max-width:440px;padding:0 10px;max-height:55vh;overflow-y:auto;
+}
+.hole-card{
+  background:rgba(255,255,255,0.05);border:1px solid rgba(74,222,128,0.25);
+  border-radius:12px;padding:10px 8px;text-align:center;min-width:72px;
+  cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent;
+}
+.hole-card:hover,.hole-card:active{
+  background:rgba(74,222,128,0.15);border-color:#4ade80;transform:scale(1.06);
+}
+.hnum{font-size:22px;font-weight:900;color:#86efac;}
+.hpar{font-size:11px;color:#4a7a4a;}
+.hdiff{font-size:12px;margin-top:2px;}
+.btn{
+  font-size:clamp(15px,2.5vw,20px);font-weight:700;
+  border:none;border-radius:12px;padding:11px 26px;cursor:pointer;
+  transition:filter .15s,transform .1s;-webkit-tap-highlight-color:transparent;
+}
+.btn:active{transform:scale(.96);}
+.btn-g{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;}
+.btn-s{background:rgba(255,255,255,.08);color:#86efac;border:1px solid rgba(74,222,128,.3);}
+.btn:hover{filter:brightness(1.2);}
+.score-table{
+  background:rgba(255,255,255,0.05);border:1px solid rgba(74,222,128,0.2);
+  border-radius:12px;padding:14px 20px;min-width:280px;max-width:360px;
+}
+.score-row{
+  display:flex;justify-content:space-between;padding:4px 0;
+  font-size:13px;color:#a3e6b0;
+  border-bottom:1px solid rgba(74,222,128,0.08);
+}
+.score-row:last-child{border-bottom:none;font-weight:700;font-size:15px;color:#4ade80;}
+.score-tag{font-size:11px;padding:1px 7px;border-radius:6px;margin-left:5px;}
+.tag-eagle{background:#7c3aed;color:#fff;}
+.tag-birdie{background:#2563eb;color:#fff;}
+.tag-par{background:#16a34a;color:#fff;}
+.tag-bogey{background:#d97706;color:#fff;}
+.tag-over{background:#dc2626;color:#fff;}
+/* HUD */
+#hud{
+  position:relative;z-index:10;
+  width:100%;max-width:560px;
+  display:none;
+  align-items:center;justify-content:space-between;
+  padding:5px 14px 3px;flex-shrink:0;
+}
+.hb{text-align:center;}
+.hv{font-size:clamp(18px,3vw,24px);font-weight:900;}
+.hl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#2d6e2d;}
+/* Power bar */
+#powerBar{
+  position:relative;z-index:10;
+  width:100%;max-width:560px;height:7px;
+  background:rgba(255,255,255,0.1);border-radius:4px;
+  display:none;flex-shrink:0;overflow:hidden;
+}
+#powerFill{height:100%;border-radius:4px;width:0%;
+  background:linear-gradient(90deg,#4ade80,#facc15,#f87171);
+}
+#cWrap{position:relative;z-index:10;flex:1;display:flex;align-items:center;justify-content:center;width:100%;}
+canvas{display:block;touch-action:none;border-radius:14px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.7);}
+#holeMsg{
+  position:relative;z-index:10;
+  min-height:22px;font-size:clamp(11px,1.8vw,14px);
+  color:#4a7a4a;letter-spacing:.5px;text-align:center;
+  max-width:560px;padding:2px 8px;flex-shrink:0;
+}
+#fsBtn{
+  position:fixed;top:8px;right:8px;z-index:200;
+  font-size:13px;border:none;border-radius:8px;
+  background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);
+  padding:6px 12px;cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<button id="fsBtn" onclick="toggleFS()">⛶ Fullscreen</button>
+
+<!-- START -->
+<div class="screen" id="startScreen">
+  <div class="title">⛳ MINI GOLF</div>
+  <div class="hole-scroll" id="holeGrid"></div>
+  <button class="btn btn-g" onclick="startFrom(0)">▶ Play all holes</button>
+  <div style="font-size:11px;color:#2d5a2d;text-align:center;">
+    Click a hole · Drag the ball back to aim
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen hidden" id="resultScreen">
+  <div class="title" style="font-size:clamp(28px,4vw,48px);">🏆 Final Result</div>
+  <div class="score-table" id="scoreTable"></div>
+  <div id="totalTag" style="font-size:18px;margin-top:4px;color:#86efac;"></div>
+  <button class="btn btn-g" onclick="showStart()">🏠 Play again</button>
+</div>
+
+<!-- GAME UI -->
+<div id="gameUI" style="display:none;flex-direction:column;align-items:center;width:100%;height:100%;">
+  <div id="hud">
+    <div class="hb"><div class="hv" id="hudHole" style="color:#86efac;">1/9</div><div class="hl">Hole</div></div>
+    <div class="hb"><div class="hv" id="hudPar" style="color:#fbbf24;">3</div><div class="hl">Par</div></div>
+    <div class="hb"><div class="hv" id="hudStrokes" style="color:#f87171;">0</div><div class="hl">Strokes</div></div>
+    <div class="hb">
+      <button class="btn btn-s" style="font-size:12px;padding:5px 12px;" onclick="skipHole()">Skip →</button>
+    </div>
+  </div>
+  <div id="powerBar"><div id="powerFill"></div></div>
+  <div id="cWrap"><canvas id="game"></canvas></div>
+  <div id="holeMsg"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   MINIGOLF — Clean rewrite
+   All variables declared before use
+   Clear fairway/rough visual contrast
+══════════════════════════════════════════ */
+
+const canvas = document.getElementById('game');
+const ctx    = canvas.getContext('2d');
+
+/* ── Responsive sizing — DECLARED FIRST ── */
+let CW = 600, CH = 400;
+let BALL_R = 10;
+let HOLE_R = 14;
+const REST = 0.60;
+
+/* ── Physics constants — DECLARED BEFORE setSizes ── */
+let POWER     = 0.16;
+let MAX_POWER = 200;
+let FRICTION  = 0.983;
+let STOP_V    = 0.08;
+
+function setSizes(){
+  const avW = window.innerWidth  * 0.99;
+  const avH = window.innerHeight - 90;
+  CW = avW;
+  CH = Math.min(avH, CW * 0.62);
+  if(CH < 200){ CH = avH; CW = CH / 0.62; }
+  CW = Math.floor(CW);
+  CH = Math.floor(CH);
+  canvas.width  = CW;
+  canvas.height = CH;
+  BALL_R    = Math.max(8,  CW * 0.016);
+  HOLE_R    = Math.max(10, CW * 0.024);
+  MAX_POWER = CW * 0.22;
+  POWER     = 0.16 * (600 / CW);
+  FRICTION  = Math.min(0.991, 0.983 + (CW-600)/600*0.005);
+  STOP_V    = Math.max(0.05, 0.08 * (CW/600));
+}
+setSizes();
+window.addEventListener('resize', ()=>{ setSizes(); if(gameActive) buildHole(holeIdx); });
+
+/* ── Audio ── */
+const AC = new(window.AudioContext||window.webkitAudioContext)();
+function tone(f,v,d,t='sine'){
+  try{
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=t;o.frequency.value=f;
+    g.gain.setValueAtTime(v,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d);
+  }catch(e){}
+}
+function sndHit(p){ tone(180+p*200,0.18+p*0.18,0.08,'square'); }
+function sndWall(){  tone(140,0.1,0.04,'sawtooth'); }
+function sndHole(){  [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.22,0.16),i*90)); }
+function sndBounce(){ tone(280,0.08,0.04,'triangle'); }
+
+/* ── Wall helpers ── */
+function rw(x,y,w,h,col){ return {type:'rect',x,y,w,h,col:col||'#145a32'}; }
+function cw(x,y,r,col){   return {type:'circle',x,y,r,col:col||'#145a32'}; }
+function p(v){ return v*CW/100; }
+function q(v){ return v*CH/100; }
+
+/* ── Game state ── */
+let holeIdx=0, strokes=0, totalStrokes=[], gameActive=false;
+let ball, hole, walls=[], movers=[], sandTraps=[];
+let aiming=false, dragStart={x:0,y:0}, dragEnd={x:0,y:0};
+let ballMoving=false, holed=false;
+let endRoundScheduled=false;
+let grassCache=null, grassCacheW=0, grassCacheH=0;
+
+/* ══════════════════════════════════════════
+   HOLE DEFINITIONS
+   Fairway = open playable area (green)
+   Rough   = walls/out-of-bounds (dark)
+   Clear visual separation is KEY
+══════════════════════════════════════════ */
+
+const HOLES = [
+  {par:2, label:'Straight', diff:'⭐',       build(){
+    ball={x:p(10),y:q(50),vx:0,vy:0};
+    hole={x:p(88),y:q(50)};
+    walls=[
+      rw(0,0,CW,q(22)),          // top rough
+      rw(0,q(78),CW,q(22)),      // bottom rough
+    ];
+    sandTraps=[]; movers=[];
+  }},
+  {par:3, label:'Curve',    diff:'⭐⭐',     build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(85),y:q(18)};
+    walls=[
+      rw(0,0,CW,q(8)),
+      rw(0,q(92),CW,q(8)),
+      rw(0,q(8),p(8),q(34)),
+      rw(0,q(58),p(8),q(34)),
+      rw(p(50),q(34),p(50),q(9)),
+      rw(p(50),q(8),p(12),q(26)),
+    ];
+    sandTraps=[]; movers=[];
+  }},
+  {par:3, label:'Gates',    diff:'⭐⭐',     build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(90),y:q(50)};
+    walls=[
+      rw(0,0,CW,q(22)),
+      rw(0,q(78),CW,q(22)),
+      rw(p(28),q(22),p(5),q(23)),   // gate 1 top
+      rw(p(28),q(55),p(5),q(23)),   // gate 1 bottom
+      rw(p(58),q(22),p(5),q(20)),   // gate 2 top
+      rw(p(58),q(58),p(5),q(20)),   // gate 2 bottom
+    ];
+    sandTraps=[]; movers=[];
+  }},
+  {par:3, label:'S-Curve',  diff:'⭐⭐⭐',   build(){
+    ball={x:p(8),y:q(22),vx:0,vy:0};
+    hole={x:p(88),y:q(78)};
+    walls=[
+      rw(0,0,CW,q(10)),
+      rw(0,q(90),CW,q(10)),
+      rw(0,q(10),p(8),q(28)),
+      rw(p(92),q(62),p(8),q(28)),
+      rw(p(38),q(38),p(62),q(10)),
+      rw(0,q(52),p(62),q(10)),
+    ];
+    sandTraps=[{x:p(72),y:q(22),r:p(7)}];
+    movers=[];
+  }},
+  {par:4, label:'Zigzag',   diff:'⭐⭐⭐',   build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(88),y:q(50)};
+    walls=[
+      rw(0,0,CW,q(18)),
+      rw(0,q(82),CW,q(18)),
+      rw(p(22),q(38),p(7),q(44)),
+      rw(p(44),q(18),p(7),q(44)),
+      rw(p(66),q(38),p(7),q(44)),
+    ];
+    sandTraps=[
+      {x:p(33),y:q(64),r:p(6)},
+      {x:p(55),y:q(32),r:p(6)},
+    ];
+    movers=[];
+  }},
+  {par:3, label:'Bumpers',  diff:'⭐⭐⭐',   build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(88),y:q(50)};
+    walls=[
+      rw(0,0,CW,q(18)),
+      rw(0,q(82),CW,q(18)),
+      cw(p(35),q(50),p(6),'#8b0000'),
+      cw(p(55),q(32),p(6),'#8b0000'),
+      cw(p(55),q(68),p(6),'#8b0000'),
+      cw(p(72),q(50),p(6),'#8b0000'),
+    ];
+    sandTraps=[]; movers=[];
+  }},
+  {par:4, label:'Moving',   diff:'⭐⭐⭐⭐', build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(88),y:q(50)};
+    const mb1=rw(p(28),q(18),p(7),q(28),'#8b2000');
+    const mb2=rw(p(52),q(54),p(7),q(28),'#8b2000');
+    walls=[
+      rw(0,0,CW,q(18)),
+      rw(0,q(82),CW,q(18)),
+      mb1, mb2,
+      cw(p(72),q(50),p(5),'#8b0000'),
+    ];
+    movers=[
+      {wall:mb1,axis:'y',speed:1.4,minV:q(18),maxV:q(54)},
+      {wall:mb2,axis:'y',speed:-1.4,minV:q(54),maxV:q(82)-q(28)},
+    ];
+    sandTraps=[];
+  }},
+  {par:5, label:'Maze',     diff:'⭐⭐⭐⭐', build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(88),y:q(50)};
+    walls=[
+      rw(0,0,CW,q(12)),
+      rw(0,q(88),CW,q(12)),
+      rw(p(18),q(12),p(22),q(9)),
+      rw(p(18),q(52),p(22),q(9)),
+      rw(p(18),q(76),p(22),q(6)),
+      rw(p(55),q(20),p(18),q(9)),
+      rw(p(55),q(60),p(18),q(9)),
+      rw(p(40),q(22),p(5),q(34)),
+      rw(p(72),q(12),p(5),q(34)),
+      rw(p(72),q(62),p(5),q(20)),
+      cw(p(50),q(50),p(4),'#8b0000'),
+    ];
+    sandTraps=[
+      {x:p(28),y:q(66),r:p(6)},
+      {x:p(64),y:q(38),r:p(5)},
+    ];
+    movers=[];
+  }},
+  {par:5, label:'Chaos',    diff:'⭐⭐⭐⭐⭐',build(){
+    ball={x:p(8),y:q(50),vx:0,vy:0};
+    hole={x:p(88),y:q(50)};
+    const mb=rw(p(46),q(14),p(7),q(20),'#8b2000');
+    walls=[
+      rw(0,0,CW,q(14)),
+      rw(0,q(86),CW,q(14)),
+      rw(p(20),q(14),p(7),q(34)),
+      rw(p(20),q(66),p(7),q(14)),
+      rw(p(38),q(30),p(7),q(34)),
+      rw(p(58),q(14),p(7),q(28)),
+      rw(p(58),q(60),p(7),q(20)),
+      cw(p(30),q(72),p(4),'#8b0000'),
+      cw(p(48),q(26),p(4),'#8b0000'),
+      cw(p(70),q(50),p(4),'#8b0000'),
+      cw(p(78),q(28),p(4),'#8b0000'),
+      cw(p(78),q(72),p(4),'#8b0000'),
+      mb,
+    ];
+    movers=[{wall:mb,axis:'x',speed:1.2,minV:p(38),maxV:p(53)}];
+    sandTraps=[
+      {x:p(34),y:q(44),r:p(6)},
+      {x:p(54),y:q(56),r:p(5)},
+    ];
+  }},
+];
+
+/* ── Grass/rough texture cache ── */
+function getGrass(){
+  if(grassCache && grassCacheW===CW && grassCacheH===CH) return grassCache;
+  const gc2 = document.createElement('canvas');
+  gc2.width=CW; gc2.height=CH;
+  const g2 = gc2.getContext('2d');
+  // Fairway green base
+  const grad = g2.createLinearGradient(0,0,CW,CH);
+  grad.addColorStop(0,'#38b84e');
+  grad.addColorStop(0.5,'#32a847');
+  grad.addColorStop(1,'#2d9840');
+  g2.fillStyle=grad;
+  g2.fillRect(0,0,CW,CH);
+  // Mowing stripes for clear visual texture
+  for(let i=0;i<CW;i+=28){
+    g2.fillStyle = i%56===0 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.03)';
+    g2.fillRect(i,0,14,CH);
+  }
+  grassCache=gc2; grassCacheW=CW; grassCacheH=CH;
+  return grassCache;
+}
+
+/* ── Build hole ── */
+function buildHole(idx){
+  strokes=0; holed=false; aiming=false; ballMoving=false;
+  endRoundScheduled=false;
+  grassCache=null; // invalidate so rough redraws
+  HOLES[idx].build();
+  updateHUD();
+  document.getElementById('holeMsg').textContent =
+    `Hole ${idx+1}: ${HOLES[idx].label}  ·  Par ${HOLES[idx].par}  ·  ${HOLES[idx].diff}  ·  Tap & drag to shoot`;
+}
+
+/* ── Rough texture (drawn under walls) ── */
+function drawRough(){
+  // Fill entire canvas with rough (dark brownish-green)
+  // Very dark rough — high contrast with bright fairway
+  ctx.fillStyle='#060e06';
+  ctx.fillRect(0,0,CW,CH);
+  // Rough texture
+  ctx.fillStyle='rgba(255,255,255,0.015)';
+  for(let x=0;x<CW;x+=14) for(let y=0;y<CH;y+=14)
+    if((x+y)%28===0) ctx.fillRect(x,y,5,5);
+}
+
+/* ── Draw ── */
+function draw(){
+  if(!gameActive) return;
+
+  // 1. Rough background
+  drawRough();
+
+  // 2. Fairway — clip to the playable area (inverse of walls)
+  // We draw fairway as a full rectangle then paint walls on top
+  ctx.drawImage(getGrass(), 0, 0);
+
+  // 3. Sand traps
+  sandTraps.forEach(s=>{
+    const sg=ctx.createRadialGradient(s.x,s.y,s.r*0.1,s.x,s.y,s.r);
+    sg.addColorStop(0,'#e8d090'); sg.addColorStop(1,'#c8a850');
+    ctx.fillStyle=sg;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(180,140,40,0.5)';ctx.lineWidth=1.5;ctx.stroke();
+    // Sand texture
+    ctx.fillStyle='rgba(160,120,40,0.35)';
+    for(let i=0;i<10;i++){
+      const ax=s.x+Math.cos(i*0.65)*s.r*0.6, ay=s.y+Math.sin(i*0.65)*s.r*0.6;
+      ctx.beginPath();ctx.arc(ax,ay,2,0,Math.PI*2);ctx.fill();
+    }
+  });
+
+  // 4. Walls — warm stone color + raised 3D rail so they read as solid,
+  //    clearly different from both the bright fairway and the black rough.
+  walls.forEach(w=>{
+    if(w.type==='rect'){
+      const isMover = w.col==='#8b2000';
+      // Drop shadow first, so the wall visually sits ABOVE the fairway
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,0.55)';
+      ctx.shadowBlur=6;
+      ctx.shadowOffsetX=2;
+      ctx.shadowOffsetY=3;
+      // Warm stone/brick fill — unmistakably different from the near-black rough
+      ctx.fillStyle = isMover ? '#7a2e10' : '#5a4632';
+      if(ctx.roundRect){ ctx.beginPath();ctx.roundRect(w.x,w.y,w.w,w.h,5);ctx.fill(); }
+      else { ctx.fillRect(w.x,w.y,w.w,w.h); }
+      ctx.restore();
+      // Bright solid "rail" border — the classic mini-golf boundary look
+      ctx.strokeStyle = isMover ? '#ffb347' : '#fbbf24';
+      ctx.lineWidth=4;
+      if(ctx.roundRect){ ctx.beginPath();ctx.roundRect(w.x,w.y,w.w,w.h,5);ctx.stroke(); }
+      else { ctx.strokeRect(w.x,w.y,w.w,w.h); }
+      // Thin dark inner line, just inside the bright rail, for extra edge definition
+      ctx.strokeStyle='rgba(0,0,0,0.45)';
+      ctx.lineWidth=1.5;
+      if(ctx.roundRect){ ctx.beginPath();ctx.roundRect(w.x+3,w.y+3,Math.max(w.w-6,0),Math.max(w.h-6,0),3);ctx.stroke(); }
+      // Top-edge highlight for a raised, 3D "you'll bounce off this" feel
+      ctx.strokeStyle='rgba(255,255,255,0.35)';
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(w.x+4,w.y+2);ctx.lineTo(w.x+w.w-4,w.y+2);ctx.stroke();
+    } else {
+      const isBumper = w.col==='#8b0000';
+      // Drop shadow so bumpers also read as raised/solid
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,0.55)';
+      ctx.shadowBlur=6;
+      ctx.shadowOffsetX=2;
+      ctx.shadowOffsetY=3;
+      ctx.fillStyle = isBumper ? '#991100' : '#5a4632';
+      ctx.beginPath();ctx.arc(w.x,w.y,w.r,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = isBumper ? '#ff4422' : '#fbbf24';
+      ctx.lineWidth=4;ctx.stroke();
+      if(isBumper){
+        // Bright highlight
+        ctx.fillStyle='rgba(255,180,150,0.5)';
+        ctx.beginPath();ctx.arc(w.x-w.r*0.3,w.y-w.r*0.3,w.r*0.25,0,Math.PI*2);ctx.fill();
+        // Warning label
+        ctx.fillStyle='rgba(255,100,50,0.9)';
+        ctx.font=`bold ${w.r*0.9}px sans-serif`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('!',w.x,w.y);
+      }
+    }
+  });
+
+  // 5. Hole
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+  ctx.beginPath();ctx.arc(hole.x+2,hole.y+3,HOLE_R,0,Math.PI*2);ctx.fill();
+  const hg=ctx.createRadialGradient(hole.x-HOLE_R*0.3,hole.y-HOLE_R*0.3,1,hole.x,hole.y,HOLE_R);
+  hg.addColorStop(0,'#111'); hg.addColorStop(1,'#000');
+  ctx.fillStyle=hg;
+  ctx.beginPath();ctx.arc(hole.x,hole.y,HOLE_R,0,Math.PI*2);ctx.fill();
+  // White rim
+  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.5;ctx.stroke();
+  // Flag
+  const poleH = HOLE_R+22;
+  ctx.strokeStyle='#ddd';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(hole.x,hole.y-HOLE_R);ctx.lineTo(hole.x,hole.y-poleH);ctx.stroke();
+  ctx.fillStyle='#ef4444';
+  ctx.beginPath();ctx.moveTo(hole.x,hole.y-poleH);
+  ctx.lineTo(hole.x+13,hole.y-poleH+7);ctx.lineTo(hole.x,hole.y-poleH+14);
+  ctx.fill();
+
+  // 6. Aim guide
+  if(aiming && !ballMoving){
+    const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
+    const dist=Math.hypot(dx,dy);
+    if(dist>8){
+      const pwr=Math.min(dist/MAX_POWER,1);
+      let bx=ball.x,by=ball.y,bdx=dx*POWER,bdy=dy*POWER;
+      ctx.save();
+      ctx.strokeStyle=`rgba(255,255,${80+Math.floor(pwr*175)},${0.35+pwr*0.45})`;
+      ctx.lineWidth=2;ctx.setLineDash([7,9]);
+      ctx.beginPath();ctx.moveTo(bx,by);
+      for(let i=0;i<400;i++){
+        bx+=bdx;by+=bdy;
+        bdx*=FRICTION;bdy*=FRICTION;
+        if(bx<BALL_R){bx=BALL_R;bdx=Math.abs(bdx)*REST;}
+        if(bx>CW-BALL_R){bx=CW-BALL_R;bdx=-Math.abs(bdx)*REST;}
+        if(by<BALL_R){by=BALL_R;bdy=Math.abs(bdy)*REST;}
+        if(by>CH-BALL_R){by=CH-BALL_R;bdy=-Math.abs(bdy)*REST;}
+        walls.forEach(w=>{
+          if(w.type==='rect'){
+            const nx=Math.max(w.x,Math.min(bx,w.x+w.w));
+            const ny=Math.max(w.y,Math.min(by,w.y+w.h));
+            const ddx=bx-nx,ddy=by-ny,dd=Math.hypot(ddx,ddy);
+            if(dd<BALL_R&&dd>0){
+              const pen=BALL_R-dd,nx2=ddx/dd,ny2=ddy/dd;
+              bx+=nx2*pen;by+=ny2*pen;
+              const dot=bdx*nx2+bdy*ny2;
+              if(dot<0){bdx-=dot*nx2*(1+REST);bdy-=dot*ny2*(1+REST);}
+            }
+          } else {
+            const ddx=bx-w.x,ddy=by-w.y,dd=Math.hypot(ddx,ddy);
+            if(dd<BALL_R+w.r&&dd>0){
+              const nx2=ddx/dd,ny2=ddy/dd;
+              bx=w.x+nx2*(BALL_R+w.r);by=w.y+ny2*(BALL_R+w.r);
+              const dot=bdx*nx2+bdy*ny2;
+              if(dot<0){bdx-=dot*nx2*(1+REST);bdy-=dot*ny2*(1+REST);}
+            }
+          }
+        });
+        ctx.lineTo(bx,by);
+        if(Math.abs(bdx)<STOP_V&&Math.abs(bdy)<STOP_V) break;
+      }
+      ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      document.getElementById('powerFill').style.width=(pwr*100)+'%';
+    }
+  }
+
+  // 7. Ball shadow
+  ctx.fillStyle='rgba(0,0,0,0.28)';
+  ctx.beginPath();ctx.ellipse(ball.x+3,ball.y+4,BALL_R*0.85,BALL_R*0.45,0,0,Math.PI*2);ctx.fill();
+
+  // 8. Ball
+  if(holed) ctx.globalAlpha=0.25;
+  const bg=ctx.createRadialGradient(ball.x-BALL_R*0.35,ball.y-BALL_R*0.35,BALL_R*0.05,ball.x,ball.y,BALL_R);
+  bg.addColorStop(0,'#fff');bg.addColorStop(0.6,'#f0f0f0');bg.addColorStop(1,'#ccc');
+  ctx.fillStyle=bg;
+  ctx.beginPath();ctx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);ctx.fill();
+  // Dimples
+  ctx.fillStyle='rgba(160,160,160,0.4)';
+  [[0,0],[BALL_R*0.35,-BALL_R*0.25],[-BALL_R*0.35,-BALL_R*0.25],
+   [0,BALL_R*0.38],[-BALL_R*0.33,BALL_R*0.22],[BALL_R*0.33,BALL_R*0.22]].forEach(([ox,oy])=>{
+    ctx.beginPath();ctx.arc(ball.x+ox,ball.y+oy,BALL_R*0.1,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+/* ── Input ── */
+function getPos(e){
+  const r=canvas.getBoundingClientRect();
+  const sx=canvas.width/r.width, sy=canvas.height/r.height;
+  const src=e.touches?e.touches[0]:e;
+  return {x:(src.clientX-r.left)*sx, y:(src.clientY-r.top)*sy};
+}
+
+// Touch: tap ANYWHERE, drag in the desired direction -> the ball is shot that way
+// More natural for participants -- no precision needed to "hit" the ball
+canvas.addEventListener('pointerdown',e=>{
+  if(!gameActive||holed||ballMoving) return;
+  try{AC.resume();}catch(ex){}
+  aiming=true;
+  dragStart=getPos(e);
+  dragEnd={...dragStart};
+  document.getElementById('powerBar').style.display='block';
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!aiming) return;
+  dragEnd=getPos(e);
+  // Show power bar
+  const dist=Math.hypot(dragEnd.x-dragStart.x,dragEnd.y-dragStart.y);
+  const pwr=Math.min(dist/MAX_POWER,1);
+  document.getElementById('powerFill').style.width=(pwr*100)+'%';
+});
+canvas.addEventListener('pointerup',e=>{
+  if(!aiming) return;
+  document.getElementById('powerBar').style.display='none';
+  document.getElementById('powerFill').style.width='0%';
+  dragEnd=getPos(e);
+  aiming=false;
+  // Shoot in drag direction
+  const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist<8) return; // ignore tiny taps
+  const pwr=Math.min(dist/MAX_POWER,1);
+  ball.vx=dx*POWER;
+  ball.vy=dy*POWER;
+  strokes++;
+  sndHit(pwr);
+  updateHUD();
+});
+
+/* ── Physics ── */
+function updateMovers(){
+  movers.forEach(m=>{
+    if(m.axis==='x'){ m.wall.x+=m.speed; if(m.wall.x<m.minV||m.wall.x>m.maxV) m.speed*=-1; }
+    else {            m.wall.y+=m.speed; if(m.wall.y<m.minV||m.wall.y>m.maxV) m.speed*=-1; }
+  });
+}
+function inSand(){ return sandTraps.some(s=>Math.hypot(ball.x-s.x,ball.y-s.y)<s.r); }
+
+function collideRect(w){
+  const nx=Math.max(w.x,Math.min(ball.x,w.x+w.w));
+  const ny=Math.max(w.y,Math.min(ball.y,w.y+w.h));
+  const dx=ball.x-nx, dy=ball.y-ny;
+  const d=Math.hypot(dx,dy);
+  if(d<BALL_R&&d>0){
+    const pen=BALL_R-d,nx2=dx/d,ny2=dy/d;
+    ball.x+=nx2*pen;ball.y+=ny2*pen;
+    const dot=ball.vx*nx2+ball.vy*ny2;
+    if(dot<0){ball.vx-=dot*nx2*(1+REST);ball.vy-=dot*ny2*(1+REST);sndWall();}
+  }
+}
+function collideCirc(w){
+  const dx=ball.x-w.x,dy=ball.y-w.y,d=Math.hypot(dx,dy);
+  const minD=BALL_R+w.r;
+  if(d<minD&&d>0){
+    const nx=dx/d,ny=dy/d;
+    ball.x=w.x+nx*minD;ball.y=w.y+ny*minD;
+    const dot=ball.vx*nx+ball.vy*ny;
+    if(dot<0){ball.vx-=dot*nx*(1+REST);ball.vy-=dot*ny*(1+REST);sndBounce();}
+  }
+}
+
+function update(){
+  if(!gameActive||holed) return;
+  updateMovers();
+  const fric=inSand()?0.92:FRICTION;
+  ball.x+=ball.vx;ball.y+=ball.vy;
+  ball.vx*=fric;ball.vy*=fric;
+  ballMoving=Math.abs(ball.vx)>STOP_V||Math.abs(ball.vy)>STOP_V;
+  if(!ballMoving){ball.vx=0;ball.vy=0;}
+  // Borders
+  if(ball.x<BALL_R){ball.x=BALL_R;ball.vx=Math.abs(ball.vx)*REST;sndWall();}
+  if(ball.x>CW-BALL_R){ball.x=CW-BALL_R;ball.vx=-Math.abs(ball.vx)*REST;sndWall();}
+  if(ball.y<BALL_R){ball.y=BALL_R;ball.vy=Math.abs(ball.vy)*REST;sndWall();}
+  if(ball.y>CH-BALL_R){ball.y=CH-BALL_R;ball.vy=-Math.abs(ball.vy)*REST;sndWall();}
+  // Walls
+  walls.forEach(w=>{ if(w.type==='rect') collideRect(w); else collideCirc(w); });
+  // Hole
+  if(Math.hypot(ball.x-hole.x,ball.y-hole.y)<HOLE_R && Math.hypot(ball.vx,ball.vy)<7){
+    sndHole();holed=true;ball.vx=0;ball.vy=0;
+    setTimeout(showHoleResult,600);
+  }
+}
+
+/* ── HUD ── */
+function updateHUD(){
+  document.getElementById('hudHole').textContent=`${holeIdx+1}/9`;
+  document.getElementById('hudPar').textContent=HOLES[holeIdx].par;
+  document.getElementById('hudStrokes').textContent=strokes;
+}
+
+/* ── Round result ── */
+function showHoleResult(){
+  const par=HOLES[holeIdx].par, diff=strokes-par;
+  let msg = strokes===1?'Hole in One! 🎊':
+            diff<=-2?'Eagle! 🦅':diff===-1?'Birdie! 🐦':
+            diff===0?'Par ✅':diff===1?'Bogey 😅':`+${diff} 😬`;
+  document.getElementById('holeMsg').textContent=`${msg} · Tap for next hole`;
+  totalStrokes.push(strokes);
+  canvas.addEventListener('pointerdown', advance, {once:true});
+}
+
+function advance(){
+  if(holeIdx<HOLES.length-1){ holeIdx++; buildHole(holeIdx); }
+  else showResult();
+}
+
+function skipHole(){
+  if(holed) return;
+  totalStrokes.push(HOLES[holeIdx].par+2);
+  if(holeIdx<HOLES.length-1){ holeIdx++; buildHole(holeIdx); }
+  else showResult();
+}
+
+/* ── Final scoreboard ── */
+function showResult(){
+  gameActive=false;
+  document.getElementById('gameUI').style.display='none';
+  const tbl=document.getElementById('scoreTable');
+  let html='',total=0,totalPar=0;
+  HOLES.forEach((h,i)=>{
+    const s=totalStrokes[i]||0, d=s-h.par;
+    total+=s; totalPar+=h.par;
+    let tag='',tcls='';
+    if(s===1){tag='Hole in One!';tcls='tag-eagle';}
+    else if(d<=-2){tag='Eagle';tcls='tag-eagle';}
+    else if(d===-1){tag='Birdie';tcls='tag-birdie';}
+    else if(d===0){tag='Par';tcls='tag-par';}
+    else if(d===1){tag='Bogey';tcls='tag-bogey';}
+    else{tag='+'+d;tcls='tag-over';}
+    html+=`<div class="score-row">
+      <span>Hole ${i+1} – ${h.label}</span>
+      <span>Par ${h.par}</span>
+      <span>${s} <span class="score-tag ${tcls}">${tag}</span></span>
+    </div>`;
+  });
+  const diff=total-totalPar;
+  html+=`<div class="score-row"><span>TOTALT</span><span>Par ${totalPar}</span><span>${total} (${diff>=0?'+'+diff:diff})</span></div>`;
+  tbl.innerHTML=html;
+  const summary=diff<=-9?'🏆 Proffsresultat!':diff<=-5?'🌟 Fantastiskt!':
+    diff<=-2?'👏 Excellent!':diff<=2?'✅ Great job!':
+    diff<=6?'😊 Decent round!':'💪 Keep practicing!';
+  document.getElementById('totalTag').textContent=summary;
+  document.getElementById('resultScreen').classList.remove('hidden');
+}
+
+/* ── Navigation ── */
+function showStart(){
+  document.getElementById('startScreen').classList.remove('hidden');
+  document.getElementById('resultScreen').classList.add('hidden');
+  document.getElementById('gameUI').style.display='none';
+  gameActive=false;
+  buildHoleGrid();
+}
+
+function startFrom(idx){
+  try{AC.resume();}catch(e){}
+  holeIdx=idx; totalStrokes=[]; grassCache=null;
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('resultScreen').classList.add('hidden');
+  document.getElementById('gameUI').style.display='flex';
+  document.getElementById('hud').style.display='flex';
+  gameActive=true;
+  buildHole(idx);
+}
+
+function buildHoleGrid(){
+  const grid=document.getElementById('holeGrid');
+  grid.innerHTML='';
+  HOLES.forEach((h,i)=>{
+    const d=document.createElement('div');
+    d.className='hole-card';
+    d.innerHTML=`<div class="hnum">${i+1}</div>
+      <div class="hpar">Par ${h.par}</div>
+      <div class="hdiff">${h.diff}</div>
+      <div style="font-size:11px;color:#86efac;margin-top:2px;">${h.label}</div>`;
+    d.onclick=()=>startFrom(i);
+    grid.appendChild(d);
+  });
+}
+
+/* ── Main loop ── */
+function loop(){
+  if(gameActive&&!holed){ update(); draw(); }
+  else if(gameActive&&holed){ draw(); }
+  requestAnimationFrame(loop);
+}
+
+function toggleFS(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+    (el.requestFullscreen||el.webkitRequestFullscreen).call(el);
+    document.getElementById('fsBtn').textContent='✕ Exit';
+  } else {
+    (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+    document.getElementById('fsBtn').textContent='⛶ Fullscreen';
+  }
+}
+
+buildHoleGrid();
+loop();
+</script>
+</body>
+</html>
