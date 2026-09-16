@@ -469,7 +469,7 @@ async function fetchDeltagar(folder){
         var htmlContent=await hr.text();
         GAME_B64[gid]=btoa(unescape(encodeURIComponent(htmlContent)));
         var gCat=meta.cat||'deltagarspel';
-        var validCats=['arrow','sonar','space','combo','webb','deltagarspel'];
+        var validCats=['pilar','sonar','mellanslag','action','webb','deltagarspel'];
         if(!validCats.includes(gCat)) gCat='deltagarspel';
         GAMES.push({id:gid,name:meta.name,emoji:meta.emoji||'🎮',desc:meta.desc||meta.name,
           category:gCat,cat:gCat,url:'',file:meta.file||'',isNew:true});
