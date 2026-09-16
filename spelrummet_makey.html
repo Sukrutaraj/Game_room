@@ -468,8 +468,11 @@ async function fetchDeltagar(folder){
         if(!hr.ok) continue;
         var htmlContent=await hr.text();
         GAME_B64[gid]=btoa(unescape(encodeURIComponent(htmlContent)));
+        var gCat=meta.cat||'deltagarspel';
+        var validCats=['arrow','sonar','space','combo','webb','deltagarspel'];
+        if(!validCats.includes(gCat)) gCat='deltagarspel';
         GAMES.push({id:gid,name:meta.name,emoji:meta.emoji||'🎮',desc:meta.desc||meta.name,
-          category:meta.cat||'webb',cat:meta.cat||'webb',url:'',file:meta.file||'',isNew:true});
+          category:gCat,cat:gCat,url:'',file:meta.file||'',isNew:true});
       }catch(e){console.warn('Game not loaded:',mf.name,e);}
     }
     buildCats();
