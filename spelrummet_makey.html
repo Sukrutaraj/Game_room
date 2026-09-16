@@ -398,7 +398,7 @@ function deleteGame(gameId,folder,filename){
   if(!delCheckPwd(pwd)){alert('Wrong password!');return;}
   if(!confirm('Delete the game permanently?')) return;
   var token=delDecodeToken(pwd);
-  var REPO='sukrutaraj/Game_room';
+  var REPO='sukrutaraj/Spelrum';
   var BRANCH='main';
   function getFileSHA(path){
     return fetch('https://api.github.com/repos/'+REPO+'/contents/'+path+'?ref='+BRANCH,{
@@ -440,7 +440,7 @@ function deleteGame(gameId,folder,filename){
 
 /* ── Fetch deltagarspel from GitHub ── */
 async function fetchDeltagar(folder){
-  var REPO='sukrutaraj/Game_room';
+  var REPO='sukrutaraj/Spelrum';
   var BASE='https://raw.githubusercontent.com/'+REPO+'/main/';
   var API='https://api.github.com/repos/'+REPO+'/contents/'+folder+'?ref=main';
   try{
