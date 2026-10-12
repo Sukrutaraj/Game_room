@@ -241,7 +241,7 @@ function buildCats(){
 
   // Checklist link
   var how = document.createElement('a');
-  how.href = 'https://sukrutaraj.github.io/checklist-pages/checklist-1788262633006.html'; // TODO: swap for English checklist URL once ready
+  how.href = 'https://sukrutaraj.github.io/checklist-pages/checklist-1791805605895.html';
   how.target = '_blank';
   how.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;'+
     'background:rgba(34,197,94,0.08);border:1.5px solid rgba(34,197,94,0.25);'+
@@ -398,7 +398,7 @@ function deleteGame(gameId,folder,filename){
   if(!delCheckPwd(pwd)){alert('Wrong password!');return;}
   if(!confirm('Delete the game permanently?')) return;
   var token=delDecodeToken(pwd);
-  var REPO='sukrutaraj/Spelrum';
+  var REPO='sukrutaraj/Game_room';
   var BRANCH='main';
   function getFileSHA(path){
     return fetch('https://api.github.com/repos/'+REPO+'/contents/'+path+'?ref='+BRANCH,{
@@ -440,7 +440,7 @@ function deleteGame(gameId,folder,filename){
 
 /* ── Fetch deltagarspel from GitHub ── */
 async function fetchDeltagar(folder){
-  var REPO='sukrutaraj/Spelrum';
+  var REPO='sukrutaraj/Game_room';
   var BASE='https://raw.githubusercontent.com/'+REPO+'/main/';
   var API='https://api.github.com/repos/'+REPO+'/contents/'+folder+'?ref=main';
   try{
@@ -468,11 +468,8 @@ async function fetchDeltagar(folder){
         if(!hr.ok) continue;
         var htmlContent=await hr.text();
         GAME_B64[gid]=btoa(unescape(encodeURIComponent(htmlContent)));
-        var gCat=meta.cat||'deltagarspel';
-        var validCats=['pilar','sonar','mellanslag','action','webb','deltagarspel'];
-        if(!validCats.includes(gCat)) gCat='deltagarspel';
         GAMES.push({id:gid,name:meta.name,emoji:meta.emoji||'🎮',desc:meta.desc||meta.name,
-          category:gCat,cat:gCat,url:'',file:meta.file||'',isNew:true});
+          category:meta.cat||'webb',cat:meta.cat||'webb',url:'',file:meta.file||'',isNew:true});
       }catch(e){console.warn('Game not loaded:',mf.name,e);}
     }
     buildCats();
